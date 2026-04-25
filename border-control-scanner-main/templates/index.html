@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bojxona Nazorati - Passport Scanner</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --navy: #1a1a4e;
+            --navy-light: #2d2d6b;
+            --white: #ffffff;
+            --bg-gray: #f5f5f5;
+            --field-bg: #f0f0f0;
+            --border-gray: #d1d5db;
+            --text-dark: #1a1a2e;
+            --text-secondary: #6b7280;
+            --text-label: #999999;
+            --accent-green: #008c13;
+            --success-green: #16a34a;
+            --error-red: #dc2626;
+            --warning-orange: #f59e0b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-gray);
+            color: var(--text-dark);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* ========== NAVY HEADER BAR ========== */
+        .nav-header {
+            background: var(--navy);
+            color: var(--white);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-back {
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 22px;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-back:hover {
+            opacity: 0.8;
+        }
+
+        .nav-title {
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+            margin-right: 30px;
+        }
+
+        /* ========== STEP CONTAINERS ========== */
+        .step {
+            display: none;
+            min-height: calc(100vh - 56px);
+            flex-direction: column;
+        }
+
+        .step.active {
+            display: flex;
+        }
+
+        /* ========== STEP 1: INSTRUCTION ========== */
+        .instruction-content {
+            padding: 24px 20px;
+            flex: 1;
+        }
+
+        .instruction-card {
+            background: var(--white);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .instruction-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .instruction-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--bg-gray);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .instruction-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+            line-height: 1.3;
+        }
+
+        .instruction-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .passport-sample {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid var(--border-gray);
+            margin-bottom: 16px;
+        }
+
+        .passport-sample img {
+            width: 100%;
+            border-radius: 12px;
+            display: block;
+        }
+
+        .note-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            text-align: center;
+            font-style: italic;
+        }
+
+        .scan-btn-container {
+            padding: 20px;
+        }
+
+        .btn-scan {
+            width: 100%;
+            padding: 16px;
+            background: var(--navy);
+            color: var(--white);
+            border: none;
+            border-radius: 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+
+        .btn-scan:hover {
+            background: var(--navy-light);
+        }
+
+        .btn-scan:active {
+            transform: scale(0.98);
+        }
+
+        /* ========== STEP 2: CAMERA (FULLSCREEN) ========== */
+        .camera-fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .camera-top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            z-index: 210;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+        }
+
+        .camera-back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: var(--white);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px 14px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .camera-back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        #camera-stream {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #canvas-preview {
+            display: none;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        /* MRZ Detection Zone — ekran o'rtasida keng ingichka gorizontal poloska */
+        .passport-guide {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 10%;
+            border-top: 3px solid rgba(255, 80, 120, 0.85);
+            border-bottom: 3px solid rgba(255, 80, 120, 0.85);
+            border-left: none;
+            border-right: none;
+            border-radius: 0;
+            background: rgba(255, 80, 120, 0.18);
+            pointer-events: none;
+            z-index: 210;
+        }
+
+        .passport-guide::before {
+            content: 'MRZ zonani ramkaga joylashtiring';
+            position: absolute;
+            top: -34px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: var(--white);
+            padding: 6px 16px;
+            border-radius: 18px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            backdrop-filter: blur(10px);
+        }
+
+        .passport-guide.scanning::before {
+            content: 'Skanerlash...';
+            background: var(--accent-green);
+        }
+
+        /* Corner markers — yashirin (2-rasmda yo'q) */
+        .corner-tl, .corner-tr, .corner-bl, .corner-br {
+            display: none;
+        }
+
+        /* Scan line animation */
+        @keyframes scan-line {
+            0%, 100% { top: 0; opacity: 0; }
+            50% { top: 100%; opacity: 1; }
+        }
+
+        .scan-line {
+            display: block;
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 50, 80, 0.9);
+            box-shadow: 0 0 14px rgba(255, 50, 80, 0.7);
+            animation: scan-line 2s ease-in-out infinite;
+            z-index: 211;
+        }
+
+        /* Camera bottom controls */
+        .camera-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+            z-index: 210;
+        }
+
+        .scan-status {
+            color: var(--white);
+            font-size: 14px;
+            font-weight: 600;
+            padding: 10px 24px;
+            border-radius: 24px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .scan-status.found {
+            background: var(--accent-green);
+        }
+
+        /* Loading overlay for camera */
+        .camera-loading {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 220;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+        }
+
+        .camera-loading.show {
+            display: flex;
+        }
+
+        .camera-loading .spinner {
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top: 3px solid var(--white);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ========== STEP 3: RESULTS ========== */
+        .results-content {
+            padding: 20px;
+            flex: 1;
+        }
+
+        /* Validation status badge */
+        .status-banner {
+            padding: 14px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .status-banner.pass {
+            background: #ecfdf5;
+            color: var(--success-green);
+            border: 1px solid #bbf7d0;
+        }
+
+        .status-banner.warning {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+
+        .status-banner.fail {
+            background: #fef2f2;
+            color: var(--error-red);
+            border: 1px solid #fecaca;
+        }
+
+        /* Form-style fields (ICA inspired) */
+        .form-field {
+            background: var(--white);
+            border: 1px solid var(--border-gray);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+        }
+
+        .form-field-label {
+            font-size: 12px;
+            color: var(--text-label);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .form-field-value {
+            font-size: 16px;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .form-field-value.highlight {
+            color: var(--accent-green);
+        }
+
+        /* Two-column row */
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row .form-field {
+            flex: 1;
+        }
+
+        /* Validation details (collapsible) */
+        .validation-toggle {
+            background: var(--white);
+            border: 1px solid var(--border-gray);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+
+        .validation-toggle-header {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .validation-toggle-header:hover {
+            background: var(--bg-gray);
+        }
+
+        .validation-toggle-arrow {
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: transform 0.2s;
+        }
+
+        .validation-toggle.open .validation-toggle-arrow {
+            transform: rotate(180deg);
+        }
+
+        .validation-toggle-body {
+            display: none;
+            padding: 0 16px 14px;
+        }
+
+        .validation-toggle.open .validation-toggle-body {
+            display: block;
+        }
+
+        .validation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--bg-gray);
+            font-size: 13px;
+        }
+
+        .validation-item:last-child {
+            border-bottom: none;
+        }
+
+        .validation-icon {
+            font-size: 16px;
+        }
+
+        /* Authenticity score */
+        .auth-score {
+            text-align: center;
+            padding: 16px;
+            background: var(--white);
+            border: 1px solid var(--border-gray);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .auth-score-value {
+            font-size: 36px;
+            font-weight: 800;
+        }
+
+        .auth-score-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .auth-score-status {
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 8px;
+            padding: 4px 16px;
+            border-radius: 16px;
+            display: inline-block;
+        }
+
+        .auth-score-status.haqiqiy {
+            background: #ecfdf5;
+            color: var(--success-green);
+        }
+
+        .auth-score-status.shubhali {
+            background: #fffbeb;
+            color: #b45309;
+        }
+
+        .auth-score-status.soxta {
+            background: #fef2f2;
+            color: var(--error-red);
+        }
+
+        /* Results footer nav */
+        .results-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-gray);
+            background: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .footer-btn {
+            background: none;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 10px 16px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .footer-btn:hover {
+            background: var(--bg-gray);
+        }
+
+        .footer-btn.back {
+            color: var(--text-secondary);
+        }
+
+        .footer-btn.next {
+            color: var(--navy);
+        }
+
+        /* Error message */
+        .error-message {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid var(--error-red);
+            color: var(--error-red);
+            padding: 14px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* Footer */
+        .app-footer {
+            padding: 16px 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 11px;
+        }
+
+        /* Dot indicators */
+        .step-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border-gray);
+            transition: background 0.3s;
+        }
+
+        .step-dot.active {
+            background: var(--navy);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ===== STEP 1: INSTRUCTION ===== -->
+    <div class="step active" id="step-1">
+        <div class="nav-header">
+            <div class="nav-title">Pasportni Skanerlash</div>
+        </div>
+
+        <div class="instruction-content">
+            <div class="instruction-card">
+                <div class="instruction-header">
+                    <div class="instruction-icon">📷</div>
+                    <div class="instruction-title">Mashinada o'qiladigan zonani (MRZ) qanday skanerlash kerak?</div>
+                </div>
+
+                <p class="instruction-text">
+                    MRZ — pasport biodata sahifasining <strong>pastki qismidagi ikki qator</strong> belgilar.
+                    Kamerani pasportning MRZ zonasiga to'g'rilang.
+                </p>
+
+                <div class="passport-sample">
+                    <img src="/sample-passport" alt="Namuna pasport - MRZ zonasi">
+                </div>
+
+                <p class="note-text">Eslatma: Pasport rasmi saqlanmaydi.</p>
+            </div>
+        </div>
+
+        <div class="scan-btn-container">
+            <button class="btn-scan" id="start-scan-btn">
+                <span>📷</span>
+                <span>PASPORTNI SKANERLASH</span>
+            </button>
+        </div>
+
+        <div class="app-footer">
+            Targeting and risk monitoring department
+        </div>
+    </div>
+
+    <!-- ===== STEP 2: CAMERA ===== -->
+    <div class="step" id="step-2">
+        <div class="camera-fullscreen" id="camera-fullscreen">
+            <div class="camera-top-bar">
+                <button class="camera-back-btn" id="camera-back-btn">&#8249; Orqaga</button>
+            </div>
+
+            <video id="camera-stream" autoplay playsinline muted></video>
+            <canvas id="canvas-preview"></canvas>
+
+            <div class="passport-guide" id="passport-guide">
+                <div class="corner-tl"></div>
+                <div class="corner-tr"></div>
+                <div class="corner-bl"></div>
+                <div class="corner-br"></div>
+                <div class="scan-line"></div>
+            </div>
+
+            <div class="camera-bottom" id="camera-bottom">
+                <div class="scan-status" id="scan-status">MRZ qidirilmoqda...</div>
+            </div>
+
+            <div class="camera-loading" id="camera-loading">
+                <div class="spinner"></div>
+                <p>Ma'lumotlar qayta ishlanmoqda...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== STEP 3: RESULTS ===== -->
+    <div class="step" id="step-3">
+        <div class="nav-header">
+            <button class="nav-back" id="results-back-btn">&#8249;</button>
+            <div class="nav-title">Ma'lumotlar</div>
+        </div>
+
+        <div class="results-content">
+            <div class="error-message" id="error-message"></div>
+
+            <div id="status-banner" class="status-banner pass"></div>
+
+            <div id="auth-score-section" class="auth-score"></div>
+
+            <div id="data-fields"></div>
+
+            <div class="validation-toggle" id="validation-toggle">
+                <div class="validation-toggle-header" id="validation-toggle-header">
+                    <span>ICAO 9303 Validatsiya</span>
+                    <span class="validation-toggle-arrow">&#9660;</span>
+                </div>
+                <div class="validation-toggle-body" id="validation-details"></div>
+            </div>
+        </div>
+
+        <div class="results-footer">
+            <button class="footer-btn back" id="footer-back-btn">
+                &#8249; ORQAGA
+            </button>
+            <div class="step-dots">
+                <div class="step-dot"></div>
+                <div class="step-dot"></div>
+                <div class="step-dot active"></div>
+            </div>
+            <button class="footer-btn next" id="footer-new-btn">
+                YANGI &#8250;
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Telegram Web App initialization
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+
+        // State
+        let currentStep = 1;
+        let stream = null;
+        let autoScanInterval = null;
+        let isScanning = false;
+
+        // DOM elements
+        const steps = {
+            1: document.getElementById('step-1'),
+            2: document.getElementById('step-2'),
+            3: document.getElementById('step-3')
+        };
+
+        const cameraStream = document.getElementById('camera-stream');
+        const canvasPreview = document.getElementById('canvas-preview');
+        const passportGuide = document.getElementById('passport-guide');
+        const cameraLoading = document.getElementById('camera-loading');
+        const scanStatus = document.getElementById('scan-status');
+        const errorMessage = document.getElementById('error-message');
+
+        // ========== STEP NAVIGATION ==========
+        function showStep(step) {
+            Object.values(steps).forEach(s => s.classList.remove('active'));
+            steps[step].classList.add('active');
+            currentStep = step;
+
+            if (step === 2) {
+                initCamera();
+            } else {
+                stopAutoScan();
+                stopCamera();
+            }
+        }
+
+        // ========== CAMERA ==========
+        async function initCamera() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera API not supported');
+                }
+
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: { ideal: 'environment' },
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        }
+                    });
+                } catch (e) {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' }
+                    });
+                }
+
+                cameraStream.srcObject = stream;
+                cameraStream.style.display = 'block';
+                canvasPreview.style.display = 'none';
+
+                await new Promise((resolve, reject) => {
+                    cameraStream.onloadedmetadata = () => resolve();
+                    cameraStream.play().catch(() => {});
+                    setTimeout(() => reject(new Error('Camera timeout')), 5000);
+                });
+
+                if (cameraStream.videoWidth === 0) {
+                    throw new Error('Invalid video dimensions');
+                }
+
+                // Kamera tayyor — avtomatik skanerlashni boshlash
+                startAutoScan();
+
+            } catch (error) {
+                console.error('Camera error:', error);
+                showStep(1);
+                alert('Kamera ishlamayapti. Iltimos, kamera ruxsatini bering.');
+            }
+        }
+
+        // ========== AUTO SCAN ==========
+        function startAutoScan() {
+            stopAutoScan();
+            isScanning = false;
+            scanStatus.textContent = 'MRZ qidirilmoqda...';
+            scanStatus.classList.remove('found');
+            cameraLoading.classList.remove('show');
+
+            // Har 2 sekundda frame olish va serverga yuborish
+            autoScanInterval = setInterval(() => {
+                if (isScanning || currentStep !== 2) return;
+                captureAndScan();
+            }, 2000);
+        }
+
+        function stopAutoScan() {
+            if (autoScanInterval) {
+                clearInterval(autoScanInterval);
+                autoScanInterval = null;
+            }
+            isScanning = false;
+        }
+
+        async function captureAndScan() {
+            if (!cameraStream.videoWidth || !cameraStream.videoHeight || !stream) return;
+
+            isScanning = true;
+
+            try {
+                // Video'dan faqat MRZ zonasini crop qilib olish (markazdagi 20%)
+                const vw = cameraStream.videoWidth;
+                const vh = cameraStream.videoHeight;
+                const cropHeight = Math.round(vh * 0.20);
+                const cropY = Math.round((vh - cropHeight) / 2);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = vw;
+                canvas.height = cropHeight;
+                canvas.getContext('2d').drawImage(
+                    cameraStream,
+                    0, cropY, vw, cropHeight,
+                    0, 0, vw, cropHeight
+                );
+
+                // JPEG blob yaratish
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/jpeg', 0.75);
+                });
+
+                if (!blob) {
+                    isScanning = false;
+                    return;
+                }
+
+                // Serverga yuborish
+                const formData = new FormData();
+                formData.append('file', blob, 'passport.jpg');
+
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // MRZ topildi va o'qildi!
+                    stopAutoScan();
+                    scanStatus.textContent = 'MRZ topildi!';
+                    scanStatus.classList.add('found');
+                    displayResults(result.data);
+
+                    // Biroz kutib keyin natijalar sahifasiga o'tish
+                    setTimeout(() => showStep(3), 500);
+                    return;
+                }
+
+                // MRZ topilmadi — davom etish
+                isScanning = false;
+
+            } catch (error) {
+                console.error('Auto-scan error:', error);
+                isScanning = false;
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+        }
+
+        // ========== RESULTS DISPLAY ==========
+        function displayResults(data) {
+            // Status banner
+            const banner = document.getElementById('status-banner');
+            const isPass = data.validation_status === 'PASS';
+            banner.className = `status-banner ${isPass ? 'pass' : 'warning'}`;
+            banner.innerHTML = `
+                <span>${isPass ? '&#10003;' : '&#9888;'}</span>
+                <span>${isPass ? 'Barcha tekshiruvlar muvaffaqiyatli' : 'Ba\'zi tekshiruvlar o\'tmadi'}</span>
+            `;
+
+            // Authenticity score
+            const authSection = document.getElementById('auth-score-section');
+            if (data.authenticity) {
+                const auth = data.authenticity;
+                const statusClass = auth.status === 'HAQIQIY' ? 'haqiqiy' :
+                                   auth.status === 'SHUBHALI' ? 'shubhali' : 'soxta';
+                authSection.innerHTML = `
+                    <div class="auth-score-value" style="color: ${auth.status === 'HAQIQIY' ? 'var(--success-green)' : auth.status === 'SHUBHALI' ? '#b45309' : 'var(--error-red)'}">${auth.score}%</div>
+                    <div class="auth-score-label">Haqiqiylik balli</div>
+                    <div class="auth-score-status ${statusClass}">${auth.status}</div>
+                `;
+            }
+
+            // Form fields
+            const fullName = `${data.surname || ''} ${data.given_names || ''}`.trim();
+            const fields = document.getElementById('data-fields');
+            fields.innerHTML = `
+                <div class="form-field">
+                    <div class="form-field-label">To'liq Ism (Pasportda)</div>
+                    <div class="form-field-value">${fullName}</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <div class="form-field-label">Jins</div>
+                        <div class="form-field-value">${data.sex === 'M' ? 'ERKAK' : data.sex === 'F' ? 'AYOL' : data.sex}</div>
+                    </div>
+                    <div class="form-field">
+                        <div class="form-field-label">Tug'ilgan Sana</div>
+                        <div class="form-field-value">${data.date_of_birth}</div>
+                    </div>
+                </div>
+                <div class="form-field">
+                    <div class="form-field-label">Fuqarolik</div>
+                    <div class="form-field-value">${data.nationality}</div>
+                </div>
+                <div class="form-field">
+                    <div class="form-field-label">Pasport Raqami</div>
+                    <div class="form-field-value highlight">${data.passport_number}</div>
+                </div>
+                <div class="form-field">
+                    <div class="form-field-label">Amal Qilish Muddati</div>
+                    <div class="form-field-value">${data.date_of_expiry}</div>
+                </div>
+                <div class="form-field">
+                    <div class="form-field-label">JSHSHIR / PNFL</div>
+                    <div class="form-field-value highlight">${data.personal_number || 'N/A'}</div>
+                </div>
+                <div class="form-field">
+                    <div class="form-field-label">OCR Aniqligi</div>
+                    <div class="form-field-value highlight">${data.ocr_accuracy != null ? data.ocr_accuracy + '%' : 'N/A'}</div>
+                </div>
+            `;
+
+            // Validation details
+            const validationDetails = document.getElementById('validation-details');
+            const validations = data.validations || {};
+            const authChecks = data.authenticity ? data.authenticity.checks || {} : {};
+            const allChecks = { ...validations, ...authChecks };
+
+            validationDetails.innerHTML = Object.entries(allChecks).map(([key, value]) => `
+                <div class="validation-item">
+                    <span>${formatValidationKey(key)}</span>
+                    <span class="validation-icon">${value === true ? '&#10004;' : value === false ? '&#10008;' : '—'}</span>
+                </div>
+            `).join('');
+
+            // Send to Telegram
+            if (tg && tg.sendData) {
+                try { tg.sendData(JSON.stringify(data)); } catch(e) {}
+            }
+        }
+
+        function formatValidationKey(key) {
+            const labels = {
+                'passport_valid': 'Pasport Raqami Checksum',
+                'passport_checksum': 'Pasport Raqami Checksum',
+                'dob_valid': 'Tug\'ilgan Sana Checksum',
+                'dob_checksum': 'Tug\'ilgan Sana Checksum',
+                'expiry_valid': 'Amal Qilish Checksum',
+                'expiry_checksum': 'Amal Qilish Checksum',
+                'pinfl_valid': 'JSHSHIR Checksum',
+                'personal_checksum': 'JSHSHIR Checksum',
+                'composite_checksum': 'Composite Checksum',
+                'doc_type_valid': 'Hujjat Turi',
+                'passport_format': 'Pasport Format',
+                'nationality_format': 'Millat Kodi Format',
+                'dob_date_valid': 'Tug\'ilgan Sana Mantiq',
+                'expiry_date_valid': 'Amal Qilish Mantiq',
+                'not_expired': 'Muddati Tugamagan',
+                'personal_number_format': 'JSHSHIR Format',
+                'pinfl_dob_sex_match': 'JSHSHIR Cross-Validation'
+            };
+            return labels[key] || key.replace(/_/g, ' ');
+        }
+
+        // ========== ERROR HANDLING ==========
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        function hideError() {
+            errorMessage.classList.remove('show');
+        }
+
+        // ========== EVENT LISTENERS ==========
+        // Step 1 -> Step 2
+        document.getElementById('start-scan-btn').addEventListener('click', () => showStep(2));
+
+        // Step 2 -> Step 1 (back)
+        document.getElementById('camera-back-btn').addEventListener('click', () => showStep(1));
+
+        // Step 3 -> Step 2 (back to scan)
+        document.getElementById('results-back-btn').addEventListener('click', () => showStep(2));
+        document.getElementById('footer-back-btn').addEventListener('click', () => showStep(2));
+
+        // New scan
+        document.getElementById('footer-new-btn').addEventListener('click', () => showStep(1));
+
+        // Validation toggle
+        document.getElementById('validation-toggle-header').addEventListener('click', () => {
+            document.getElementById('validation-toggle').classList.toggle('open');
+        });
+
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            stopAutoScan();
+            stopCamera();
+        });
+    </script>
+</body>
+
+</html>
