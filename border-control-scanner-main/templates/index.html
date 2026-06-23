@@ -91,6 +91,44 @@
             flex: 1;
         }
 
+        /* ========== WELCOME / ENTRY CARD ========== */
+        .welcome-card {
+            background: linear-gradient(135deg, var(--navy), var(--navy-light));
+            color: var(--white);
+            border-radius: 16px;
+            padding: 22px;
+            margin-bottom: 18px;
+            box-shadow: 0 4px 16px rgba(26, 26, 78, 0.25);
+        }
+
+        .welcome-greeting {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .welcome-subtitle {
+            font-size: 14px;
+            opacity: 0.92;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+
+        .welcome-features {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+
+        .welcome-features li {
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            line-height: 1.4;
+        }
+
         .instruction-card {
             background: var(--white);
             border-radius: 16px;
@@ -626,6 +664,19 @@
         </div>
 
         <div class="instruction-content">
+            <div class="welcome-card">
+                <div class="welcome-greeting" id="welcome-greeting">Assalomu alaykum! 👋</div>
+                <div class="welcome-subtitle">
+                    <strong>Bojxona MRZ Scanner</strong> — chegara nazorati pasport skaneri.
+                </div>
+                <ul class="welcome-features">
+                    <li>🔹 Pasport MRZ zonasini skanerlash</li>
+                    <li>🔹 Ma'lumotlarni avtomatik o'qish</li>
+                    <li>🔹 Haqiqiylikni tekshirish</li>
+                    <li>🔹 Natijani bir zumda olish</li>
+                </ul>
+            </div>
+
             <div class="instruction-card">
                 <div class="instruction-header">
                     <div class="instruction-icon">📷</div>
@@ -731,6 +782,15 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
+
+        // Kirish matnini foydalanuvchi ismi bilan shaxsiylashtirish
+        try {
+            const tgUser = tg.initDataUnsafe && tg.initDataUnsafe.user;
+            if (tgUser && tgUser.first_name) {
+                document.getElementById('welcome-greeting').textContent =
+                    `Assalomu alaykum, ${tgUser.first_name}! 👋`;
+            }
+        } catch (e) {}
 
         // State
         let currentStep = 1;
