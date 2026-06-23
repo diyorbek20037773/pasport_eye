@@ -30,4 +30,4 @@ RUN python -m pip install "paddleocr[all]"
 # Loyiha fayllarini nusxalash
 COPY border-control-scanner-main/ .
 
-CMD ["python", "bot.py"]
+CMD ["python", "main.py"]

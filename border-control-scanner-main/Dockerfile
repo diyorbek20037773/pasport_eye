@@ -77,5 +77,5 @@ RUN python -m pip install "paddleocr[all]"
 # Qolgan barcha kodlarni nusxalaymiz
 COPY . .
 
-# Serverni ishga tushirish
-CMD ["sh", "-c", "python bot.py"]
+# Serverni ishga tushirish (main.py uvicorn + Telegram botni bitta loop'da ishga tushiradi)
+CMD ["sh", "-c", "python main.py"]

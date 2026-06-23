@@ -38,10 +38,46 @@ templates = Jinja2Templates(directory="templates")
 
 @app.on_event("startup")
 async def startup_event():
-    """PaddleOCR ni oldindan yuklash — birinchi so'rovda kutish yo'q."""
+    """PaddleOCR ni oldindan yuklash + Telegram botni shu loop'da ishga tushirish.
+
+    Bot AYNAN shu event loop'da initialize qilinishi shart: /telegram-webhook
+    handler reply yuborar ekan bot bilan bir xil loop'da bo'lishi kerak.
+    """
     print("PaddleOCR oldindan yuklanmoqda...", flush=True)
     init_ocr()
     print("PaddleOCR tayyor — so'rovlar qabul qilinadi.", flush=True)
+
+    # Telegram botni ishga tushirish (webhook handler bilan bir xil modul/loop)
+    from bot import get_application, WEBAPP_URL
+    application = get_application()
+    await application.initialize()
+    await application.start()
+    print("Telegram bot initialized.", flush=True)
+
+    public_url = WEBAPP_URL if (WEBAPP_URL and "localhost" not in WEBAPP_URL) else None
+    if public_url:
+        webhook_url = f"{public_url}/telegram-webhook"
+        await application.bot.set_webhook(
+            url=webhook_url,
+            drop_pending_updates=True,
+            allowed_updates=Update.ALL_TYPES,
+        )
+        print(f"✅ Webhook o'rnatildi: {webhook_url}", flush=True)
+    else:
+        print("⚠️ Public URL yo'q — webhook o'rnatilmadi (polling uchun bot.py ni ishlating).", flush=True)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Telegram botni toza to'xtatish."""
+    try:
+        from bot import get_application
+        application = get_application()
+        await application.stop()
+        await application.shutdown()
+        print("Telegram bot stopped.", flush=True)
+    except Exception as e:
+        print(f"Shutdown error: {e}", flush=True)
 
 # ============================================
 # STRICT ICAO 9303 MRZ PARSER

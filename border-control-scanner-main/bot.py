@@ -11,7 +11,6 @@ import logging
 from telegram import Update, WebAppInfo, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 import uvicorn
-from threading import Thread
 
 # Configure logging
 logging.basicConfig(
@@ -183,32 +182,17 @@ def get_application():
     return telegram_application
 
 
-def run_fastapi():
-    """Run FastAPI server in a separate thread"""
-    from main import app as fastapi_app
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(
-        fastapi_app,
-        host="0.0.0.0",
-        port=port,
-        log_level="info"
-    )
-
-
 async def main():
-    """Main function to start bot and FastAPI server"""
-    # Start FastAPI in background thread
-    fastapi_thread = Thread(target=run_fastapi, daemon=True)
-    fastapi_thread.start()
-    logger.info("FastAPI server started in background thread")
+    """Start Telegram bot and FastAPI server on a SINGLE event loop.
 
-    # Small delay to let FastAPI start
-    await asyncio.sleep(2)
-
+    Bot va FastAPI bitta loop'da ishlashi shart: webhook handler (main.py)
+    reply_text ni chaqirganda bot bilan bir xil event loop'da bo'lishi kerak.
+    Aks holda httpx client boshqa loop'dan chaqirilib xato beradi va /start
+    ga javob kelmaydi.
+    """
     # Build Telegram bot application
     application = get_application()
 
-    # Start bot
     logger.info("Starting Telegram bot...")
     await application.initialize()
     await application.start()
@@ -222,32 +206,32 @@ async def main():
         webhook_url = f"{WEBAPP_URL}/telegram-webhook"
         logger.info(f"🌐 Setting up webhook at: {webhook_url}")
 
-        # Set webhook
         await application.bot.set_webhook(
             url=webhook_url,
-            drop_pending_updates=True
+            drop_pending_updates=True,
+            allowed_updates=Update.ALL_TYPES,
         )
-
-        logger.info("✅ Bojxona Passport Scanner is now running in WEBHOOK mode!")
-        logger.info(f"📱 Mini App URL: {WEBAPP_URL}")
+        logger.info("✅ WEBHOOK mode")
         logger.info(f"🔗 Webhook: {webhook_url}")
-
     else:
         # Use polling for local development
         logger.info("🔄 Running in POLLING mode (local development)")
-
-        # Delete webhook to ensure clean polling
         logger.info("Clearing any existing webhooks...")
         await application.bot.delete_webhook(drop_pending_updates=True)
-
         await application.updater.start_polling(drop_pending_updates=True)
+        logger.info("✅ POLLING mode")
 
-        logger.info("✅ Bojxona Passport Scanner is now running in POLLING mode!")
-        logger.info(f"📱 Mini App URL: {WEBAPP_URL}")
+    logger.info(f"📱 Mini App URL: {WEBAPP_URL}")
 
-    # Keep running
+    # FastAPI/uvicorn ni AYNAN shu event loop'da ishga tushirish.
+    # uvicorn.run() yangi loop yaratadi — shuning uchun Server.serve() ishlatamiz.
+    from main import app as fastapi_app
+    port = int(os.environ.get("PORT", 8000))
+    config = uvicorn.Config(fastapi_app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(config)
+
     try:
-        await asyncio.Event().wait()
+        await server.serve()  # bloklaydi, shu loop'da ishlaydi
     except KeyboardInterrupt:
         logger.info("Shutting down...")
     finally:
