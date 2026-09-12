@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # paddlepaddle va paddleocr alohida o'rnatiladi
 RUN python -m pip install paddlepaddle==3.2.0 \
-    -i https://www.paddlepaddle.org.cn/packages/stable/cpu/
+    --extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cpu/
 
 RUN python -m pip install "paddleocr[all]"
 
